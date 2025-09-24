@@ -9,30 +9,44 @@ import path from "path";
 let app: App | undefined;
 
 // Lee service account desde archivo o desde variable:
-// - Preferimos archivo: FIREBASE_SERVICE_ACCOUNT_PATH=./serviceAccount.local.json
+// - Preferimos variable de entorno para Railway
 function loadServiceAccount() {
-  const cfgPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
-  if (cfgPath) {
-    const abs = path.resolve(process.cwd(), cfgPath);
-    const raw = fs.readFileSync(abs, "utf8");
-    const json = JSON.parse(raw);
-    return {
-      projectId: json.project_id,
-      clientEmail: json.client_email,
-      privateKey: json.private_key, // ya viene con saltos reales
-    };
+  // Primero intenta con variable de entorno (Railway)
+  const rawEnv = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  if (rawEnv) {
+    try {
+      const parsed = JSON.parse(rawEnv);
+      return {
+        projectId: parsed.project_id,
+        clientEmail: parsed.client_email,
+        // repara "\n" escapados si vinieron así
+        privateKey: String(parsed.private_key).replace(/\\n/g, "\n"),
+      };
+    } catch (e) {
+      console.error("Error parsing FIREBASE_SERVICE_ACCOUNT_KEY:", e);
+      throw new Error("FIREBASE_SERVICE_ACCOUNT_KEY malformado");
+    }
   }
 
-  // Fallback: variable en una sola línea
-  const rawEnv = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-  if (!rawEnv) throw new Error("No hay credenciales: ni PATH ni KEY en variables de entorno");
-  const parsed = JSON.parse(rawEnv);
-  return {
-    projectId: parsed.project_id,
-    clientEmail: parsed.client_email,
-    // repara "\n" escapados si vinieron así
-    privateKey: String(parsed.private_key).replace(/\\n/g, "\n"),
-  };
+  // Fallback: archivo local (desarrollo)
+  const cfgPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
+  if (cfgPath) {
+    try {
+      const abs = path.resolve(process.cwd(), cfgPath);
+      const raw = fs.readFileSync(abs, "utf8");
+      const json = JSON.parse(raw);
+      return {
+        projectId: json.project_id,
+        clientEmail: json.client_email,
+        privateKey: json.private_key, // ya viene con saltos reales
+      };
+    } catch (e) {
+      console.error("Error reading service account file:", e);
+      throw new Error("Archivo de service account no encontrado o inválido");
+    }
+  }
+
+  throw new Error("No hay credenciales: configura FIREBASE_SERVICE_ACCOUNT_KEY en Railway");
 }
 
 try {
