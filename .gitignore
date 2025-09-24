@@ -45,3 +45,4 @@ firebase-debug.log
 firestore-debug.log
 
 serviceAccount.local.json
+# serviceAccount.json - Mantener para Railway (no subir a repositorios públicos)

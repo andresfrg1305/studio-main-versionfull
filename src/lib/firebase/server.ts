@@ -8,45 +8,30 @@ import path from "path";
 
 let app: App | undefined;
 
-// Lee service account desde archivo o desde variable:
-// - Preferimos variable de entorno para Railway
+// Lee service account desde variable de entorno (Railway)
 function loadServiceAccount() {
-  // Primero intenta con variable de entorno (Railway)
   const rawEnv = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-  if (rawEnv) {
-    try {
-      const parsed = JSON.parse(rawEnv);
-      return {
-        projectId: parsed.project_id,
-        clientEmail: parsed.client_email,
-        // repara "\n" escapados si vinieron así
-        privateKey: String(parsed.private_key).replace(/\\n/g, "\n"),
-      };
-    } catch (e) {
-      console.error("Error parsing FIREBASE_SERVICE_ACCOUNT_KEY:", e);
-      throw new Error("FIREBASE_SERVICE_ACCOUNT_KEY malformado");
-    }
+  if (!rawEnv) {
+    console.error("❌ FIREBASE_SERVICE_ACCOUNT_KEY no está configurada en Railway");
+    throw new Error("FIREBASE_SERVICE_ACCOUNT_KEY no encontrada. Configúrala en las variables de entorno de Railway");
   }
 
-  // Fallback: archivo local (desarrollo)
-  const cfgPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
-  if (cfgPath) {
-    try {
-      const abs = path.resolve(process.cwd(), cfgPath);
-      const raw = fs.readFileSync(abs, "utf8");
-      const json = JSON.parse(raw);
-      return {
-        projectId: json.project_id,
-        clientEmail: json.client_email,
-        privateKey: json.private_key, // ya viene con saltos reales
-      };
-    } catch (e) {
-      console.error("Error reading service account file:", e);
-      throw new Error("Archivo de service account no encontrado o inválido");
-    }
-  }
+  try {
+    console.log("🔄 Intentando parsear FIREBASE_SERVICE_ACCOUNT_KEY...");
+    const parsed = JSON.parse(rawEnv);
+    console.log("✅ Credenciales cargadas exitosamente desde variable de entorno");
 
-  throw new Error("No hay credenciales: configura FIREBASE_SERVICE_ACCOUNT_KEY en Railway");
+    return {
+      projectId: parsed.project_id,
+      clientEmail: parsed.client_email,
+      // repara "\n" escapados si vinieron así
+      privateKey: String(parsed.private_key).replace(/\\n/g, "\n"),
+    };
+  } catch (e) {
+    console.error("❌ Error parsing FIREBASE_SERVICE_ACCOUNT_KEY:", e instanceof Error ? e.message : String(e));
+    console.error("Contenido recibido:", rawEnv.substring(0, 100) + "...");
+    throw new Error("FIREBASE_SERVICE_ACCOUNT_KEY está malformada. Verifica que el JSON sea válido");
+  }
 }
 
 try {
