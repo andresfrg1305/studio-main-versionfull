@@ -1,0 +1,61 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow authenticated users to read all documents
+    // Allow authenticated users to write to their own data and specific collections
+
+    // Profiles - users can read all, write their own
+    match /profiles/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Parking spots - read for all authenticated
+    match /parkingSpots/{spotId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Parking assignments - read for all authenticated, write for admin
+    match /parkingAssignments/{assignmentId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Vehicles - users can read all, write their own or admin
+    match /vehicles/{vehicleId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null &&
+        (request.auth.uid == resource.data.userId ||
+         get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'admin');
+    }
+
+    // Community projects - read for all authenticated
+    match /communityProjects/{projectId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Project quotes - read for all authenticated
+    match /projectQuotes/{quoteId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Project votes - read for all authenticated, write for authenticated users
+    match /projectVotes/{voteId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == resource.data.userId;
+    }
+
+    // Notifications - users can read their own, admins can read/write all
+    match /notifications/{notificationId} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == resource.data.userId ||
+         get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'admin');
+      allow write: if request.auth != null &&
+        (request.auth.uid == resource.data.userId ||
+         get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'admin');
+    }
+  }
+}
